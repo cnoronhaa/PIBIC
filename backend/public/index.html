@@ -1,0 +1,275 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Acesse+</title>
+    
+    <link rel="stylesheet" href="style.css">
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@24,400,0,0" />
+    
+    <style>
+        /* VLibras */
+        div[vw] {
+            left: auto !important; right: 20px !important;
+            top: 50% !important; transform: translateY(-50%) !important;
+            display: block !important; position: fixed !important;
+            z-index: 999999 !important;
+        }
+    </style>
+</head>
+<body class="theme-light">
+
+    <div id="tela-login" class="landing-page">
+        <header class="landing-header">
+            <button class="icon-btn" onclick="abrirModalAcessibilidade()" aria-label="Abrir opções de acessibilidade">
+                <span class="material-symbols-outlined" aria-hidden="true">settings_accessibility</span>
+            </button>
+        </header>
+
+        <main class="login-container">
+            <div class="logo-central">
+                <img src="logo.png" alt="Logo Acesse Mais" class="logo-img">
+                <h1>Acesse<span>+</span></h1>
+            </div>
+            <p class="slogan">Seu ambiente de aprendizado digital totalmente adaptado.</p>
+
+            <button id="btn-login-google" class="btn-google">
+                <img src="https://upload.wikimedia.org/wikipedia/commons/5/59/Google_Classroom_Logo.png" alt="" aria-hidden="true">
+                Conectar com Google Classroom
+            </button>
+        </main>
+    </div>
+
+    <div id="tela-painel" class="wrapper" style="display: none;">
+        
+        <aside class="sidebar" id="sidebar" role="navigation" aria-label="Menu Principal">
+            <div class="sidebar-header">
+                <button class="hamburger-btn" onclick="toggleSidebar()" aria-label="Alternar menu lateral">
+                    <span class="material-symbols-outlined" aria-hidden="true">menu</span>
+                </button>
+                <h2 class="sidebar-logo">Acesse<span>+</span></h2>
+            </div>
+            <ul class="nav-links">
+                <li>
+                    <a href="#" onclick="navegarPara('secao-turmas', event)" class="active">
+                        <span class="material-symbols-outlined" aria-hidden="true">home</span>
+                        <span class="link-text">Turmas</span>
+                    </a>
+                </li>
+                <li>
+                    <a href="#" onclick="navegarPara('secao-notificacoes', event)">
+                        <span class="material-symbols-outlined" aria-hidden="true">notifications</span>
+                        <span class="link-text">Notificações</span>
+                    </a>
+                </li>
+                <li>
+                    <a href="#">
+                        <span class="material-symbols-outlined" aria-hidden="true">help</span>
+                        <span class="link-text">Ajuda</span>
+                    </a>
+                </li>
+                <li>
+                    <a href="#" onclick="navegarPara('secao-configuracoes', event)">
+                        <span class="material-symbols-outlined" aria-hidden="true">settings</span>
+                        <span class="link-text">Configurações</span>
+                    </a>
+                </li>
+                <li>
+                    <a href="#" onclick="abrirModalAcessibilidade()">
+                        <span class="material-symbols-outlined" aria-hidden="true">accessibility_new</span>
+                        <span class="link-text">Acessibilidade</span>
+                    </a>
+                </li>
+            </ul>
+        </aside>
+
+        <main class="main-content" role="main">
+            <header class="top-bar">
+                <div id="acoes-topbar" style="width: 100%; display: flex; justify-content: flex-end; gap: 10px;">
+                    <button class="btn-voltar" onclick="abrirMaterialVideo('Vídeo de Teste (Curto)', 'jNQXAC9IVRw')" style="border-color: var(--accent); color: var(--accent);" aria-label="Testar Vídeo Curto">
+                        Testar Vídeo Curto
+                    </button>
+                </div>
+            </header>
+
+            <section id="secao-turmas" class="content-section" aria-labelledby="h1-turmas">
+                <h1 id="h1-turmas" class="page-title">Turmas</h1>
+                <div id="container-turmas" class="turmas-grid" aria-live="polite"></div>
+            </section>
+
+            <section id="secao-notificacoes" class="content-section" style="display: none;" aria-labelledby="h1-notif">
+                <h1 id="h1-notif" class="page-title">Notificações</h1>
+                <div class="notificacoes-list" aria-live="polite">
+                    <div class="card-notificacao" role="status">
+                        <strong>Sistema:</strong> Bem-vindo ao Acesse+! Seu ambiente está configurado.
+                    </div>
+                </div>
+            </section>
+            
+            <section id="secao-configuracoes" class="content-section" style="display: none;" aria-labelledby="h1-config">
+                <h1 id="h1-config" class="page-title">Configurações</h1>
+                <div class="config-card">
+                    
+                    <h3 style="margin-top: 0;">Meu Perfil</h3>
+                    <div class="perfil-info" style="display: flex; align-items: center; gap: 15px; margin-bottom: 30px;">
+                        <img id="perfil-foto" src="" alt="Sua foto de perfil do Google" style="display: none; border-radius: 50%; width: 60px; height: 60px;">
+                        <span id="perfil-icone-fallback" class="material-symbols-outlined" style="font-size: 60px; color: var(--accent);" aria-hidden="true">account_circle</span>
+                        <div>
+                            <h4 id="perfil-nome" style="margin: 0; font-size: 1.2rem;" aria-live="polite">Carregando...</h4>
+                            <p id="perfil-email" style="margin: 5px 0 10px 0; color: #666;" aria-live="polite">Aguarde...</p>
+                            <a href="https://myaccount.google.com/" target="_blank" style="font-size: 0.9rem; text-decoration: none; color: var(--accent); font-weight: bold; margin-top: 10px; display: inline-block;">Gerenciar Conta do Google</a>
+                        </div>
+                    </div>
+
+                    <h3 style="border-top: 1px solid var(--border-color); padding-top: 20px;">Notificações</h3>
+                    <div class="option-row">
+                        <span id="label-notif-site" aria-hidden="true">Receber notificações no site</span>
+                        <label class="switch">
+                            <input type="checkbox" checked aria-labelledby="label-notif-site">
+                            <span class="slider"></span>
+                        </label>
+                    </div>
+                    <div class="option-row">
+                        <span id="label-notif-email" aria-hidden="true">Receber alertas por e-mail</span>
+                        <label class="switch">
+                            <input type="checkbox" checked aria-labelledby="label-notif-email">
+                            <span class="slider"></span>
+                        </label>
+                    </div>
+                    
+                    <h3 style="margin-top: 30px; border-top: 1px solid var(--border-color); padding-top: 20px;">Segurança da Conta</h3>
+                    <p style="font-size: 0.9rem; color: #777; margin-bottom: 20px;">Ao sair, você precisará autorizar o acesso com o Google novamente no próximo acesso.</p>
+                    <button onclick="fazerLogout()" class="btn-danger">
+                        <span class="material-symbols-outlined" aria-hidden="true">logout</span> Sair da Conta
+                    </button>
+                </div>
+            </section>
+
+            <section id="secao-mural" class="content-section" style="display: none;" aria-labelledby="mural-nome-turma">
+                <div class="mural-header" style="justify-content: space-between;">
+                    <div style="display: flex; align-items: center; gap: 20px;">
+                        <button onclick="navegarPara('secao-turmas', event)" class="btn-voltar" aria-label="Voltar para a lista de turmas">
+                            <span aria-hidden="true">←</span> Voltar
+                        </button>
+                        <div>
+                            <h1 id="mural-nome-turma" style="margin: 0;" aria-live="polite">Mural da Turma</h1>
+                            <p id="mural-disciplina" style="color: #666; margin: 5px 0 0 0;" aria-live="polite">Disciplina</p>
+                        </div>
+                    </div>
+                    
+                    <button class="icon-btn-mural" onclick="abrirInfoTurma()" aria-label="Ver informações detalhadas da turma">
+                        <span class="material-symbols-outlined" aria-hidden="true">info</span>
+                    </button>
+                </div>
+
+                <div class="turma-tabs" role="tablist">
+                    <button class="tab-btn active" id="btn-aba-mural" onclick="alternarAbaTurma('mural')" role="tab" aria-selected="true" aria-controls="aba-mural">Mural</button>
+                    <button class="tab-btn" id="btn-aba-atividades" onclick="alternarAbaTurma('atividades')" role="tab" aria-selected="false" aria-controls="aba-atividades">Atividades</button>
+                </div>
+
+                <div id="aba-mural" role="tabpanel" tabindex="0">
+                    <div id="container-posts" class="posts-grid" aria-live="polite"></div>
+                </div>
+
+                <div id="aba-atividades" style="display: none;" role="tabpanel" tabindex="0" aria-live="polite">
+                    <p>Carregando atividades...</p>
+                </div>
+            </section>
+
+            <section id="secao-material" class="content-section" style="display: none;" aria-labelledby="material-titulo">
+                <div class="mural-header">
+                    <button onclick="navegarPara('secao-mural', event)" class="btn-voltar" aria-label="Voltar para o mural da turma">
+                        <span aria-hidden="true">←</span> Voltar
+                    </button>
+                    <h1 id="material-titulo">Título do Material</h1>
+                </div>
+
+                <div class="material-container">
+                    <div id="video-wrapper" class="video-wrapper" style="display: none;" role="region" aria-label="Vídeo">
+                        <iframe id="youtube-player" width="100%" height="100%" frameborder="0" allowfullscreen title="Reprodutor de vídeo do YouTube"></iframe>
+                    </div>
+
+                   <div class="transcricao-box">
+                        <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--border-color); padding-bottom: 10px; margin-bottom: 15px;">
+                            <h3 style="margin: 0; border: none; padding: 0;">Transcrição <span id="badge-idioma" style="font-size: 0.9rem; opacity: 0.7; font-weight: normal;"></span></h3>
+                            
+                            <div style="display: flex; gap: 10px;">
+                                <button id="btn-traduzir" class="btn-danger" style="background: #2196F3; padding: 8px 15px; font-size: 1rem; border-color: transparent; display: none;">
+                                    <span class="material-symbols-outlined" style="font-size: 1.2rem; margin-right: 5px; vertical-align: middle;" aria-hidden="true">translate</span> Traduzir para Português
+                                </button>
+                                
+                                <button id="btn-gerar-transcricao" class="btn-danger" style="background: var(--accent); padding: 8px 15px; font-size: 1rem; border-color: transparent; display: none;">
+                                    <span class="material-symbols-outlined" style="font-size: 1.2rem; margin-right: 5px; vertical-align: middle;" aria-hidden="true">text_snippet</span> Gerar Transcrição
+                                </button>
+                            </div>
+                        </div>
+                        
+                        <div class="transcricao-content" id="transcricao-texto" aria-live="polite" role="region" aria-label="Texto da transcrição">
+                            Aguardando vídeo ser selecionado...
+                        </div>
+                    </div>
+                </div>
+            </section>
+        </main>
+    </div>
+
+    <div id="modal-acessibilidade" class="modal" role="dialog" aria-modal="true" aria-labelledby="titulo-modal-acessibilidade">
+        <div class="modal-content">
+            <header class="modal-header">
+                <h2 id="titulo-modal-acessibilidade">Acessibilidade</h2>
+                <button onclick="fecharModalAcessibilidade()" aria-label="Fechar" style="background:none; border:none; font-size:1.5rem; cursor:pointer; color: var(--text-main);">
+                    <span aria-hidden="true">&times;</span>
+                </button>
+            </header>
+            <div class="modal-body">
+                <div class="option-row">
+                    <span id="txt-escuro" aria-hidden="true">Modo escuro</span>
+                    <label class="switch">
+                        <input type="checkbox" id="chk-escuro" aria-labelledby="txt-escuro">
+                        <span class="slider"></span>
+                    </label>
+                </div>
+                <div class="option-row">
+                    <span id="txt-contraste" aria-hidden="true">Alto contraste</span>
+                    <label class="switch">
+                        <input type="checkbox" id="chk-contraste" aria-labelledby="txt-contraste">
+                        <span class="slider"></span>
+                    </label>
+                </div>
+                <div class="option-row">
+                    <span>Tamanho da fonte</span>
+                    <div class="btn-group">
+                        <button onclick="alterarFonte('diminuir')" aria-label="Diminuir tamanho da fonte do site">-</button>
+                        <button onclick="alterarFonte('aumentar')" aria-label="Aumentar tamanho da fonte do site">+</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div id="modal-info-turma" class="modal" role="dialog" aria-modal="true" aria-labelledby="titulo-modal-info">
+        <div class="modal-content">
+            <header class="modal-header">
+                <h2 id="titulo-modal-info">Informações da Turma</h2>
+                <button onclick="fecharInfoTurma()" aria-label="Fechar" style="background:none; border:none; font-size:1.5rem; cursor:pointer; color: var(--text-main);">
+                    <span aria-hidden="true">&times;</span>
+                </button>
+            </header>
+            <div class="modal-body" id="info-turma-conteudo" style="font-size: 1.1rem; line-height: 1.5;" aria-live="polite">
+            </div>
+        </div>
+    </div>
+
+    <div vw class="enabled">
+        <div vw-access-button class="active"></div>
+        <div vw-plugin-wrapper><div class="vw-plugin-top-wrapper"></div></div>
+    </div>
+    <script src="https://vlibras.gov.br/app/vlibras-plugin.js"></script>
+    <script>window.addEventListener('load', function() { new window.VLibras.Widget('https://vlibras.gov.br/app'); });</script>
+    
+    <script src="https://accounts.google.com/gsi/client" async defer></script>
+    <script src="https://apis.google.com/js/api.js"></script>
+    <script src="app.js"></script>
+</body>
+</html>
