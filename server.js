@@ -19,51 +19,28 @@ app.use(express.static('public'));
 app.get('/api/transcricao/:id', async (req, res) => {
   const videoId = req.params.id;
   const videoUrl = `https://www.youtube.com/watch?v=${videoId}`;
-  
-  // salva na pasta temp do Windows
-  const audioPath = path.join(os.tmpdir(), `audio_temp_${videoId}.webm`); 
 
   try {
-    console.log(`▶️ Passo 1: Extraindo áudio à força do YouTube (${videoId})...`);
+    console.log(`▶️ Passo 1: Solicitando transcrição via URL para AssemblyAI (${videoId})...`);
 
-    await youtubedl(videoUrl, {
-      format: 'bestaudio',
-      output: audioPath,
-      noWarnings: true
+    // Em vez de baixar o arquivo, passamos a URL direto para eles!
+    const transcript = await client.transcripts.transcribe({
+      audio: videoUrl, // A AssemblyAI aceita links do YouTube!
+      language_detection: true,
+      speech_models: ['universal-3-pro']
     });
 
-    console.log("✅ Áudio extraído! \n▶️ Passo 2: Enviando para a AssemblyAI...");
-    
-    try {
-      const transcript = await client.transcripts.transcribe({
-        audio: audioPath, 
-        language_detection: true,
-        speech_models: ['universal-3-pro'] 
-      });
-
-      if (transcript.status === 'error') {
-        throw new Error(transcript.error);
-      }
-
-      console.log("✅ Transcrição finalizada com sucesso!");
-      res.json({ 
-          texto: transcript.text, 
-          idioma: transcript.language_code 
-      });
-
-      // Limpeza invisível
-      if (fs.existsSync(audioPath)) fs.unlinkSync(audioPath);
-      
-    } catch (apiError) {
-      console.error("❌ Erro na AssemblyAI:", apiError.message);
-      res.status(500).json({ erro: "A IA não conseguiu processar o áudio." });
-      if (fs.existsSync(audioPath)) fs.unlinkSync(audioPath);
+    if (transcript.status === 'error') {
+      console.error("❌ Erro na AssemblyAI:", transcript.error);
+      return res.status(500).json({ erro: "Erro ao processar áudio." });
     }
 
+    console.log("✅ Transcrição finalizada com sucesso!");
+    res.json({ texto: transcript.text, idioma: transcript.language_code });
+
   } catch (error) {
-    console.error("❌ Erro ao baixar do YouTube:", error.message);
-    res.status(500).json({ erro: "O YouTube bloqueou o vídeo. Tente outro link." });
-    if (fs.existsSync(audioPath)) fs.unlinkSync(audioPath);
+    console.error("❌ Erro geral no servidor:", error.message);
+    res.status(500).json({ erro: "Não foi possível processar o vídeo." });
   }
 });
 
