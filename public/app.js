@@ -383,7 +383,7 @@ async function carregarTranscricao(youtubeId) {
     btnGerar.style.display = 'none'; 
     
     try {
-        const resposta = await fetch(`http://localhost:3000/api/transcricao/${youtubeId}`);
+        const resposta = await fetch(`/api/transcricao/${youtubeId}`);
         const dados = await resposta.json();
         
         if (resposta.ok) {
