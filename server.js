@@ -1,6 +1,7 @@
 import express from 'express';
 import cors from 'cors';
 import youtubedl from 'youtube-dl-exec';
+import ytdl from '@distube/ytdl-core';
 import fs from 'fs';
 import os from 'os'; // Acha o sistema operacional
 import path from 'path'; // Monta os caminhos de pasta
@@ -21,26 +22,31 @@ app.get('/api/transcricao/:id', async (req, res) => {
   const videoUrl = `https://www.youtube.com/watch?v=${videoId}`;
 
   try {
-    console.log(`▶️ Passo 1: Solicitando transcrição via URL para AssemblyAI (${videoId})...`);
+    console.log(`▶️ Tentando obter stream de áudio para: ${videoId}`);
 
-    // Em vez de baixar o arquivo, passamos a URL direto para eles!
+    // Pegamos as informações do vídeo e o link direto do áudio
+    const info = await ytdl.getInfo(videoUrl);
+    const audioUrl = ytdl.chooseFormat(info.formats, { filter: 'audioonly', quality: 'highestaudio' }).url;
+
+    console.log("✅ Link de áudio extraído. Enviando para AssemblyAI...");
+
     const transcript = await client.transcripts.transcribe({
-      audio: videoUrl, // A AssemblyAI aceita links do YouTube!
+      audio: audioUrl, // Enviamos o link direto do arquivo de áudio, não a página do YouTube
       language_detection: true,
       speech_models: ['universal-3-pro']
     });
 
-    if (transcript.status === 'error') {
-      console.error("❌ Erro na AssemblyAI:", transcript.error);
-      return res.status(500).json({ erro: "Erro ao processar áudio." });
-    }
+    if (transcript.status === 'error') throw new Error(transcript.error);
 
-    console.log("✅ Transcrição finalizada com sucesso!");
     res.json({ texto: transcript.text, idioma: transcript.language_code });
 
   } catch (error) {
-    console.error("❌ Erro geral no servidor:", error.message);
-    res.status(500).json({ erro: "Não foi possível processar o vídeo." });
+    console.error("❌ Erro técnico:", error.message);
+    
+    // Se ainda assim der erro, vamos avisar que é uma limitação do YouTube
+    res.status(500).json({ 
+      erro: "O YouTube bloqueou o acesso temporariamente. Tente outro vídeo ou tente mais tarde." 
+    });
   }
 });
 
