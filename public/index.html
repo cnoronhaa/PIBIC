@@ -84,7 +84,7 @@
         <main class="main-content" role="main">
             <header class="top-bar">
                 <div id="acoes-topbar" style="width: 100%; display: flex; justify-content: flex-end; gap: 10px;">
-                    </div>
+                </div>
             </header>
 
             <section id="secao-turmas" class="content-section" aria-labelledby="h1-turmas">
@@ -201,7 +201,10 @@
                         <label for="arquivo-upload" class="sr-only">Escolher arquivo de áudio ou vídeo</label>
                         <input type="file" id="arquivo-upload" accept="audio/*,video/*" aria-describedby="upload-hint" style="display: block; width: 100%; margin: 15px 0; padding: 10px; border: 1px dashed var(--border-color); border-radius: 4px; background: var(--bg-main); color: var(--text-main);">
                         
-                        <p id="upload-hint" style="font-size: 0.9rem; color: #666; margin-bottom: 15px;">Formatos suportados: .mp3, .mp4, .wav, .m4a, .mov</p>
+                        <p id="upload-hint" style="font-size: 0.9rem; color: #666; margin-bottom: 15px;">
+                            Formatos suportados: .mp3, .mp4, .wav, .m4a, .mov <br>
+                            <strong>Tamanho máximo permitido: 50MB</strong>
+                        </p>
                         
                         <button id="btn-enviar-arquivo" class="btn-danger" style="background: var(--accent); padding: 10px 20px; font-size: 1rem; border: none; border-radius: 4px; cursor: pointer; color: white; display: flex; align-items: center; gap: 8px;">
                             <span class="material-symbols-outlined" aria-hidden="true">upload</span> Transcrever Arquivo
@@ -222,6 +225,13 @@
                             Selecione um arquivo acima e clique em "Transcrever" para iniciar.
                         </div>
                     </div>
+
+                    <div id="historico-container" style="margin-top: 30px; border-top: 1px solid var(--border-color); padding-top: 20px; display: none;">
+                        <h3>⏳ Histórico Recente</h3>
+                        <p style="font-size: 0.9rem; color: #666;">Clique em uma transcrição anterior para visualizá-la novamente sem gastar os créditos da IA.</p>
+                        <div id="lista-historico" style="display: flex; flex-direction: column; gap: 10px; margin-top: 15px;"></div>
+                    </div>
+
                 </div>
             </section>
         </main>
