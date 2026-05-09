@@ -197,3 +197,25 @@ body.theme-high-contrast .status-badge.entregue { background-color: #000; color:
     clip: rect(0, 0, 0, 0);
     border: 0;
 }
+
+/* =========================================
+   CORREÇÃO DEFINITIVA DO VLIBRAS (3D)
+   ========================================= */
+div[vw] {
+    position: fixed !important;
+    right: 10px !important;
+    left: auto !important;
+    top: 50% !important;
+    /* Usamos margin-top no lugar do transform para não quebrar o motor 3D do boneco */
+    margin-top: -150px !important; 
+    z-index: 2147483647 !important; /* Fica na frente de todas as camadas do site */
+}
+
+/* Força o quadro 3D do boneco a nunca ser esmagado pelo layout */
+div[vw] canvas {
+    max-width: 100% !important;
+    height: auto !important;
+    display: block !important;
+    opacity: 1 !important;
+    visibility: visible !important;
+}
