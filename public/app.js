@@ -64,11 +64,6 @@ function navegarPara(idSecao, event) {
     if(event && event.currentTarget) {
         event.currentTarget.classList.add('active');
     }
-
-    if(idSecao !== 'secao-material') {
-        const player = document.getElementById('youtube-player');
-        if(player) player.src = "";
-    }
 }
 
 /* LOGOUT */
@@ -171,7 +166,6 @@ async function abrirMural(curso) {
     document.getElementById('mural-nome-turma').innerText = curso.name;
     document.getElementById('mural-disciplina').innerText = curso.section || 'Geral';
     navegarPara('secao-mural');
-    
     alternarAbaTurma('mural');
 
     const containerMural = document.getElementById('container-posts');
@@ -210,9 +204,9 @@ async function abrirMural(curso) {
                 let anexoHtml = '';
                 if (temAnexo) {
                     anexos.forEach(anexo => {
+                        // Agora todos os botões de anexo direcionam para a ferramenta local (se for vídeo/áudio)
                         if (anexo.youtubeVideo) {
-                            const video = anexo.youtubeVideo;
-                            anexoHtml += `<button class="btn-anexo" style="margin-right: 10px;" onclick="abrirMaterialVideo('${post.title || 'Vídeo'}', '${video.id}')">▶️ Assistir Vídeo</button>`;
+                            anexoHtml += `<button class="btn-anexo" style="margin-right: 10px;" onclick="abrirFerramentaTranscricao('${post.title || 'Material da Aula'}')">🎙️ Transcrever Arquivo Local</button>`;
                         } else if (anexo.driveFile) {
                             const file = anexo.driveFile.driveFile;
                             anexoHtml += `<a href="${file.alternateLink}" target="_blank" class="btn-anexo" style="margin-right: 10px; display: inline-block;">📄 Abrir ${file.title || 'Arquivo'}</a>`;
@@ -270,24 +264,14 @@ async function abrirMural(curso) {
                 listaAtividades.appendChild(divAtiv);
             });
         }
-
     } catch (err) {
         console.error("Erro ao carregar mural:", err);
-        if (err.status === 401 || (err.result && err.result.error && err.result.error.code === 401)) {
-            sessionStorage.removeItem('google_token');
-            window.location.reload();
-        } else {
-            containerMural.innerHTML = '<p>Falta permissão ou ocorreu um erro ao ler o mural.</p>';
-            containerAtividades.innerHTML = '<p>Erro ao carregar atividades.</p>';
-        }
     }
 }
 
-/* ABAS DA TURMA */
 function alternarAbaTurma(aba) {
     document.getElementById('btn-aba-mural').classList.remove('active');
     document.getElementById('btn-aba-atividades').classList.remove('active');
-
     document.getElementById('aba-mural').style.display = 'none';
     document.getElementById('aba-atividades').style.display = 'none';
 
@@ -300,10 +284,8 @@ function alternarAbaTurma(aba) {
     }
 }
 
-/* INFORMAÇÕES DA TURMA */
 async function abrirInfoTurma() {
     if(!cursoAtualGlobal) return;
-    
     const modal = document.getElementById('modal-info-turma');
     const conteudo = document.getElementById('info-turma-conteudo');
     
@@ -326,7 +308,6 @@ async function abrirInfoTurma() {
             </div>
         `;
     } catch (err) {
-        console.error("Erro ao buscar info", err);
         conteudo.innerHTML = `<p>Você precisa dar a permissão ao Google para ver os dados dos professores.</p>`;
     }
 }
@@ -335,73 +316,71 @@ function fecharInfoTurma() { document.getElementById('modal-info-turma').style.d
 
 
 /* =========================================
-   VÍDEO E CONEXÃO COM O BACKEND 
+   SISTEMA DE UPLOAD E TRANSCRIÇÃO DE ARQUIVOS
    ========================================= */
 
-function abrirMaterialVideo(titulo, youtubeId) {
-    document.getElementById('material-titulo').innerText = titulo;
-    const wrapper = document.getElementById('video-wrapper');
-    const player = document.getElementById('youtube-player');
-    const btnGerar = document.getElementById('btn-gerar-transcricao');
+// Função que abre a tela de upload
+function abrirFerramentaTranscricao(titulo) {
+    document.getElementById('material-titulo').innerText = titulo || 'Ferramenta de Transcrição';
+    
     const btnTraduzir = document.getElementById('btn-traduzir');
     const caixaTexto = document.getElementById('transcricao-texto');
     const badgeIdioma = document.getElementById('badge-idioma');
+    const inputArquivo = document.getElementById('arquivo-upload');
+    const btnEnviar = document.getElementById('btn-enviar-arquivo');
     
     badgeIdioma.innerText = "";
     btnTraduzir.style.display = 'none'; 
-
-    if (youtubeId) {
-        wrapper.style.display = 'block';
-        player.src = `https://www.youtube.com/embed/${youtubeId}`;
-        
-        const dadosSalvos = localStorage.getItem(`transcricao_dados_${youtubeId}`);
-        
-        if (dadosSalvos) {
-            const dados = JSON.parse(dadosSalvos);
-            exibirTranscricao(dados.texto, dados.idioma);
-            btnGerar.style.display = 'none';
-        } else {
-            caixaTexto.innerHTML = "Clique no botão 'Gerar Transcrição' acima para iniciar a leitura com IA.";
-            btnGerar.style.display = 'flex'; 
-            btnGerar.onclick = () => carregarTranscricao(youtubeId);
-        }
-    } else {
-        wrapper.style.display = 'none';
-        player.src = '';
-        caixaTexto.innerHTML = '<p>Nenhum vídeo selecionado.</p>';
-        btnGerar.style.display = 'none';
-    }
+    caixaTexto.innerHTML = "Selecione um arquivo acima e clique em 'Transcrever Arquivo' para iniciar a leitura com IA.";
+    inputArquivo.value = ""; 
+    
+    btnEnviar.disabled = false;
+    btnEnviar.onclick = () => processarUploadArquivo();
     
     navegarPara('secao-material');
 }
 
-async function carregarTranscricao(youtubeId) {
+// Faz o upload real do arquivo para o servidor via form-data
+async function processarUploadArquivo() {
+    const inputArquivo = document.getElementById('arquivo-upload');
     const caixaTexto = document.getElementById('transcricao-texto');
-    const btnGerar = document.getElementById('btn-gerar-transcricao');
-    
-    caixaTexto.innerHTML = "<p>Extraindo transcrição do vídeo, aguarde... ⏳</p>";
-    btnGerar.style.display = 'none'; 
-    
+    const btnEnviar = document.getElementById('btn-enviar-arquivo');
+    const arquivo = inputArquivo.files[0];
+
+    if (!arquivo) {
+        alert("Por favor, selecione um arquivo de áudio ou vídeo no seu computador primeiro.");
+        return;
+    }
+
+    const formData = new FormData();
+    formData.append('audio', arquivo);
+
+    // Aviso acessível para leitores de tela devido ao aria-live no HTML
+    caixaTexto.innerHTML = `<p><strong>Enviando e processando:</strong> ${arquivo.name}.<br>Isso pode levar alguns instantes. Por favor, aguarde... ⏳</p>`;
+    btnEnviar.disabled = true;
+    btnEnviar.innerHTML = `<span class="material-symbols-outlined" aria-hidden="true">hourglass_empty</span> Processando...`;
+
     try {
-        const resposta = await fetch(`/api/transcricao/${youtubeId}`);
+        const resposta = await fetch('/api/transcrever', {
+            method: 'POST',
+            body: formData
+        });
         const dados = await resposta.json();
         
-        if (resposta.ok) {
-            // salva transcricao 
-            localStorage.setItem(`transcricao_dados_${youtubeId}`, JSON.stringify(dados));
+        if (resposta.ok && !dados.erro) {
             exibirTranscricao(dados.texto, dados.idioma);
         } else {
             caixaTexto.innerHTML = `<p style="color: red;">Erro: ${dados.erro}</p>`;
-            btnGerar.style.display = 'flex'; 
         }
     } catch (erro) {
-        console.error("Erro:", erro);
-        caixaTexto.innerHTML = "<p style='color: red;'>Erro de conexão com o servidor.</p>";
-        btnGerar.style.display = 'flex'; 
+        console.error("Erro na requisição:", erro);
+        caixaTexto.innerHTML = "<p style='color: red;'>Erro de conexão com o servidor. O arquivo pode ser muito grande ou a rede falhou.</p>";
+    } finally {
+        btnEnviar.disabled = false;
+        btnEnviar.innerHTML = `<span class="material-symbols-outlined" aria-hidden="true">upload</span> Transcrever Arquivo`;
     }
 }
 
-// mostra botão de traduzir ou não
 function exibirTranscricao(texto, idioma) {
     const caixaTexto = document.getElementById('transcricao-texto');
     const btnTraduzir = document.getElementById('btn-traduzir');
@@ -409,9 +388,8 @@ function exibirTranscricao(texto, idioma) {
 
     caixaTexto.innerHTML = `<p style="white-space: pre-wrap; line-height: 1.6;">${texto}</p>`;
 
-    // se a IA detectou um idioma que não seja português
     if (idioma && !idioma.toLowerCase().includes('pt')) {
-        badgeIdioma.innerText = "(Áudio Original)";
+        badgeIdioma.innerText = "(Idioma Original)";
         btnTraduzir.style.display = 'flex'; 
         btnTraduzir.onclick = () => traduzirNoNavegador(texto);
     } else {
@@ -420,7 +398,6 @@ function exibirTranscricao(texto, idioma) {
     }
 }
 
-// API do google tradutor 
 async function traduzirNoNavegador(textoOriginal) {
     const btnTraduzir = document.getElementById('btn-traduzir');
     const caixaTexto = document.getElementById('transcricao-texto');
