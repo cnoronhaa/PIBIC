@@ -10,6 +10,7 @@ const SCOPES = 'https://www.googleapis.com/auth/classroom.courses.readonly ' +
 const TAMANHO_MAXIMO_MB = 50; // Limite de 50 Megabytes
 
 let historicoTranscricoes = []; // Guarda as transcrições da sessão atual
+let usuarioLogadoEmail = ""; // NOVO: Guarda o e-mail do usuário para o localStorage
 let tokenClient;
 let gapiInited = false;
 let cursoAtualGlobal = null;
@@ -74,6 +75,13 @@ function navegarPara(idSecao, event) {
 function fazerLogout() {
     const token = gapi.client.getToken();
     sessionStorage.removeItem('google_token');
+    
+    // NOVO: Limpa as variáveis e a tela (mas deixa salvo no localStorage)
+    historicoTranscricoes = [];
+    usuarioLogadoEmail = "";
+    const containerHistorico = document.getElementById('historico-container');
+    if (containerHistorico) containerHistorico.style.display = 'none';
+
     if (token !== null) {
         google.accounts.oauth2.revoke(token.access_token, () => { window.location.reload(); });
     } else {
@@ -88,6 +96,15 @@ async function carregarPerfil() {
         const perfil = response.result;
         document.getElementById('perfil-nome').innerText = perfil.name || 'Usuário';
         document.getElementById('perfil-email').innerText = perfil.email || 'E-mail não disponível';
+        
+        // NOVO: Salva o e-mail globalmente e carrega o histórico dele
+        if (perfil.email) {
+            usuarioLogadoEmail = perfil.email;
+            const salvo = localStorage.getItem(`historico_${usuarioLogadoEmail}`);
+            historicoTranscricoes = salvo ? JSON.parse(salvo) : [];
+            atualizarUIHistorico(); // Mostra na tela o que já estava salvo
+        }
+
         if (perfil.picture) {
             const imgEl = document.getElementById('perfil-foto');
             imgEl.src = perfil.picture;
@@ -204,7 +221,6 @@ async function abrirMural(curso) {
                                 anexoHtml += `<a href="${file.alternateLink}" target="_blank" class="btn-anexo" style="margin-right: 10px; display: inline-block;">📄 Abrir Arquivo</a>`;
                             }
                         } else if (anexo.youtubeVideo) {
-                            // YouTube abre interno com a função nova!
                             const ytId = anexo.youtubeVideo.id;
                             const ytTitle = anexo.youtubeVideo.title || "Vídeo";
                             anexoHtml += `<button class="btn-anexo" style="margin-right: 10px; display: inline-flex; align-items: center; gap: 5px; cursor: pointer;" onclick="abrirPlayerYoutube('${ytId}', '${ytTitle.replace(/'/g, "\\'")}')"><span class="material-symbols-outlined">play_circle</span> Assistir Vídeo</button>`;
@@ -302,11 +318,9 @@ function abrirFerramentaTranscricao(titulo) {
     document.getElementById('btn-voltar-material').style.display = 'none';
     document.getElementById('material-titulo').innerText = titulo || 'Transcrição Manual';
     
-    // Esconde o vídeo do youtube e mostra apenas o Upload e Transcrição
     document.getElementById('video-container').style.display = 'none';
     document.getElementById('video-iframe').src = '';
     
-    // NOVO: Esconde o player de vídeo local e limpa ele
     const videoPreview = document.getElementById('video-local-preview');
     if(videoPreview) {
         videoPreview.style.display = 'none';
@@ -336,11 +350,9 @@ async function processarUploadArquivo() {
 
     if (!arquivo) return alert("Por favor, selecione um arquivo.");
 
-    // NOVO: Verificação de tamanho limite do arquivo
     const tamanhoEmMB = arquivo.size / (1024 * 1024);
     if (tamanhoEmMB > TAMANHO_MAXIMO_MB) {
         alert(`Erro: O arquivo tem ${tamanhoEmMB.toFixed(1)}MB. O limite máximo do sistema é ${TAMANHO_MAXIMO_MB}MB.`);
-        // Limpa o input pra pessoa não tentar mandar de novo por engano
         inputArquivo.value = ""; 
         return;
     }
@@ -367,7 +379,6 @@ async function processarUploadArquivo() {
         
         if (resposta.ok && !dados.erro) {
             exibirTranscricao(dados.texto, dados.idioma);
-            // NOVO: Salva no histórico!
             salvarNoHistorico(arquivo.name, dados.texto, dados.idioma);
         } else {
             caixaTexto.innerHTML = `<p style="color: red;">Erro: ${dados.erro}</p>`;
@@ -386,13 +397,11 @@ async function baixarETranscreverDoDrive(fileId, fileName) {
     document.getElementById('btn-voltar-material').style.display = 'inline-block';
     document.getElementById('material-titulo').innerText = 'Transcrevendo: ' + fileName;
     
-    // Esconde YouTube e Upload Manual, mostra apenas a caixa de Transcrição
     document.getElementById('video-container').style.display = 'none';
     document.getElementById('video-iframe').src = '';
     document.getElementById('upload-wrapper').style.display = 'none';
     document.getElementById('caixa-transcricao').style.display = 'block';
     
-    // Reseta player local antes de baixar o novo
     const videoPreview = document.getElementById('video-local-preview');
     videoPreview.style.display = 'none';
     videoPreview.src = '';
@@ -415,7 +424,6 @@ async function baixarETranscreverDoDrive(fileId, fileName) {
         
         const blob = await driveResposta.blob(); 
         
-        // NOVO: Exibe o vídeo que veio do Google Drive!
         if (blob.type.startsWith('video/') || fileName.toLowerCase().endsWith('.mp4') || fileName.toLowerCase().endsWith('.mov')) {
              const urlDoVideo = URL.createObjectURL(blob);
              videoPreview.src = urlDoVideo;
@@ -457,11 +465,9 @@ function abrirPlayerYoutube(videoId, videoTitle) {
     document.getElementById('btn-voltar-material').style.display = 'inline-block';
     document.getElementById('material-titulo').innerText = videoTitle || 'Vídeo do YouTube';
     
-    // Esconde as caixas de upload e de transcrição
     document.getElementById('upload-wrapper').style.display = 'none';
     document.getElementById('caixa-transcricao').style.display = 'none';
     
-    // Mostra e configura o Container de Vídeo
     document.getElementById('video-container').style.display = 'block';
     document.getElementById('video-iframe').src = `https://www.youtube.com/embed/${videoId}`;
     document.getElementById('btn-ver-yt').href = `https://www.youtube.com/watch?v=${videoId}`;
@@ -526,10 +532,18 @@ async function traduzirNoNavegador(textoOriginal) {
    SISTEMA DE HISTÓRICO (Economia de Tokens)
    ========================================= */
 function salvarNoHistorico(nome, texto, idioma) {
-    // Verifica se já existe pra não duplicar no visual
     const jaExiste = historicoTranscricoes.find(item => item.nome === nome);
     if (!jaExiste) {
         historicoTranscricoes.push({ nome, texto, idioma });
+        
+        // NOVO: Salva usando o email como chave para não misturar usuários
+        if (usuarioLogadoEmail) {
+            localStorage.setItem(
+                `historico_${usuarioLogadoEmail}`, 
+                JSON.stringify(historicoTranscricoes)
+            );
+        }
+        
         atualizarUIHistorico();
     }
 }
@@ -539,18 +553,16 @@ function atualizarUIHistorico() {
     const lista = document.getElementById('lista-historico');
     
     if (historicoTranscricoes.length === 0) {
-        container.style.display = 'none';
+        if(container) container.style.display = 'none';
         return;
     }
 
-    // Mostra o container se tiver algo no histórico
-    container.style.display = 'block';
-    lista.innerHTML = '';
+    if(container) container.style.display = 'block';
+    if(lista) lista.innerHTML = '';
 
-    // Cria um botãozinho pra cada transcrição salva
     historicoTranscricoes.forEach((item) => {
         const btn = document.createElement('button');
-        btn.className = 'btn-anexo'; // Usa a sua mesma classe bonitinha
+        btn.className = 'btn-anexo'; 
         btn.style.cssText = 'text-align: left; background: var(--bg-main); color: var(--text-main); border: 1px solid var(--border-color); width: 100%; display: flex; justify-content: space-between; align-items: center; cursor: pointer; padding: 12px;';
         
         btn.innerHTML = `
@@ -559,7 +571,6 @@ function atualizarUIHistorico() {
         `;
         
         btn.onclick = () => {
-            // Se ele clicar, a gente recupera sem acionar API!
             document.getElementById('video-local-preview').style.display = 'none'; 
             document.getElementById('caixa-transcricao').style.display = 'block';
             exibirTranscricao(item.texto, item.idioma);
@@ -567,7 +578,7 @@ function atualizarUIHistorico() {
             window.scrollTo({ top: document.getElementById('caixa-transcricao').offsetTop, behavior: 'smooth' });
         };
         
-        lista.appendChild(btn);
+        if(lista) lista.appendChild(btn);
     });
 }
 
