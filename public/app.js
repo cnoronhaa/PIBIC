@@ -304,6 +304,13 @@ function abrirFerramentaTranscricao(titulo) {
     document.getElementById('video-container').style.display = 'none';
     document.getElementById('video-iframe').src = '';
     
+    // NOVO: Esconde o player de vídeo local e limpa ele
+    const videoPreview = document.getElementById('video-local-preview');
+    if(videoPreview) {
+        videoPreview.style.display = 'none';
+        videoPreview.src = '';
+    }
+    
     document.getElementById('caixa-transcricao').style.display = 'block';
     document.getElementById('upload-wrapper').style.display = 'block';
     
@@ -327,6 +334,17 @@ async function processarUploadArquivo() {
 
     if (!arquivo) return alert("Por favor, selecione um arquivo.");
 
+    // NOVO: Mágica do Vídeo! Verifica se é vídeo e exibe no player
+    const videoPreview = document.getElementById('video-local-preview');
+    if (arquivo.type.startsWith('video/')) {
+        const urlDoVideo = URL.createObjectURL(arquivo);
+        videoPreview.src = urlDoVideo;
+        videoPreview.style.display = 'block';
+    } else {
+        videoPreview.style.display = 'none';
+        videoPreview.src = '';
+    }
+
     const formData = new FormData();
     formData.append('audio', arquivo);
 
@@ -346,7 +364,6 @@ async function processarUploadArquivo() {
     }
 }
 
-
 /* =========================================
    TRANSCRIÇÃO AUTOMÁTICA (DO CLASSROOM)
    ========================================= */
@@ -360,6 +377,11 @@ async function baixarETranscreverDoDrive(fileId, fileName) {
     document.getElementById('upload-wrapper').style.display = 'none';
     document.getElementById('caixa-transcricao').style.display = 'block';
     
+    // Reseta player local antes de baixar o novo
+    const videoPreview = document.getElementById('video-local-preview');
+    videoPreview.style.display = 'none';
+    videoPreview.src = '';
+
     document.getElementById('badge-idioma').innerText = "";
     document.getElementById('btn-traduzir').style.display = 'none';
     
@@ -377,6 +399,13 @@ async function baixarETranscreverDoDrive(fileId, fileName) {
         if (!driveResposta.ok) throw new Error("Acesso negado. Você pode precisar fazer login novamente para dar permissão de leitura.");
         
         const blob = await driveResposta.blob(); 
+        
+        // NOVO: Exibe o vídeo que veio do Google Drive!
+        if (blob.type.startsWith('video/') || fileName.toLowerCase().endsWith('.mp4') || fileName.toLowerCase().endsWith('.mov')) {
+             const urlDoVideo = URL.createObjectURL(blob);
+             videoPreview.src = urlDoVideo;
+             videoPreview.style.display = 'block';
+        }
         
         caixaTexto.innerHTML = `<p><strong>Passo 2/2:</strong> Arquivo capturado! Enviando para a Inteligência Artificial processar... 🧠⏳</p>`;
         
