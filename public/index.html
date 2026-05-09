@@ -182,7 +182,7 @@
 
             <section id="secao-material" class="content-section" style="display: none;" aria-labelledby="material-titulo">
                 <div class="mural-header">
-                    <button onclick="navegarPara('secao-mural', event)" class="btn-voltar" aria-label="Voltar à tela anterior">
+                    <button id="btn-voltar-material" onclick="navegarPara('secao-mural', event)" class="btn-voltar" aria-label="Voltar à tela anterior">
                         <span aria-hidden="true">←</span> Voltar
                     </button>
                     <h1 id="material-titulo">Visualizador de Material</h1>
@@ -265,6 +265,19 @@
                         <button onclick="alterarFonte('aumentar')" aria-label="Aumentar tamanho da fonte do site">+</button>
                     </div>
                 </div>
+            </div>
+        </div>
+    </div>
+
+    <div id="modal-info-turma" class="modal" role="dialog" aria-modal="true" aria-labelledby="titulo-modal-info">
+        <div class="modal-content">
+            <header class="modal-header">
+                <h2 id="titulo-modal-info">Informações da Turma</h2>
+                <button onclick="fecharInfoTurma()" aria-label="Fechar" style="background:none; border:none; font-size:1.5rem; cursor:pointer; color: var(--text-main);">
+                    <span aria-hidden="true">&times;</span>
+                </button>
+            </header>
+            <div class="modal-body" id="info-turma-conteudo" style="font-size: 1.1rem; line-height: 1.5;" aria-live="polite">
             </div>
         </div>
     </div>
