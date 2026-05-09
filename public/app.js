@@ -1,6 +1,5 @@
 // CONFIGURAÇÕES
 const CLIENT_ID = '1056484806122-rhmdjfl6njumsj6sjb6fo5rh4ba1jvgt.apps.googleusercontent.com';
-// ADICIONAMOS A PERMISSÃO DO DRIVE AQUI NO FINAL DOS SCOPES:
 const SCOPES = 'https://www.googleapis.com/auth/classroom.courses.readonly ' + 
                'https://www.googleapis.com/auth/classroom.announcements.readonly ' + 
                'https://www.googleapis.com/auth/classroom.coursework.me.readonly ' +
@@ -58,6 +57,12 @@ function navegarPara(idSecao, event) {
     if(event) event.preventDefault(); 
     document.querySelectorAll('.content-section').forEach(sec => sec.style.display = 'none');
     document.getElementById(idSecao).style.display = 'block';
+    
+    // Parar vídeos caso o aluno mude de tela enquanto assiste
+    if(idSecao !== 'secao-material') {
+        const iframe = document.getElementById('video-iframe');
+        if(iframe) iframe.src = ''; 
+    }
     
     document.querySelectorAll('.nav-links a').forEach(a => a.classList.remove('active'));
     if(event && event.currentTarget) event.currentTarget.classList.add('active');
@@ -186,20 +191,21 @@ async function abrirMural(curso) {
                 let anexoHtml = '';
                 if (temAnexo) {
                     anexos.forEach(anexo => {
-                        // AQUI IDENTIFICAMOS SE O PROFESSOR SUBIU ÁUDIO OU VÍDEO
                         if (anexo.driveFile) {
                             const file = anexo.driveFile.driveFile;
                             const titulo = (file.title || "").toLowerCase();
                             const ehMidia = titulo.endsWith('.mp3') || titulo.endsWith('.mp4') || titulo.endsWith('.m4a') || titulo.endsWith('.wav') || titulo.endsWith('.ogg');
                             
                             if (ehMidia) {
-                                // Mostra o botão destacadão para a IA ler!
-                                anexoHtml += `<button class="btn-anexo" style="margin-right: 10px; background: var(--accent); color: white; border: none; padding: 8px 12px; border-radius: 4px; cursor: pointer;" onclick="baixarETranscreverDoDrive('${file.id}', '${file.title}')">🎙️ Transcrever Aula (${file.title})</button>`;
+                                anexoHtml += `<button class="btn-anexo" style="margin-right: 10px; background: var(--accent); color: white; border: none; padding: 8px 12px; border-radius: 4px; cursor: pointer;" onclick="baixarETranscreverDoDrive('${file.id}', '${file.title.replace(/'/g, "\\'")}')">🎙️ Transcrever Aula (${file.title})</button>`;
                             } else {
                                 anexoHtml += `<a href="${file.alternateLink}" target="_blank" class="btn-anexo" style="margin-right: 10px; display: inline-block;">📄 Abrir Arquivo</a>`;
                             }
                         } else if (anexo.youtubeVideo) {
-                            anexoHtml += `<a href="${anexo.youtubeVideo.alternateLink}" target="_blank" class="btn-anexo" style="margin-right: 10px; display: inline-block;">▶️ Abrir YouTube</a>`;
+                            // YouTube abre interno com a função nova!
+                            const ytId = anexo.youtubeVideo.id;
+                            const ytTitle = anexo.youtubeVideo.title || "Vídeo";
+                            anexoHtml += `<button class="btn-anexo" style="margin-right: 10px; display: inline-flex; align-items: center; gap: 5px; cursor: pointer;" onclick="abrirPlayerYoutube('${ytId}', '${ytTitle.replace(/'/g, "\\'")}')"><span class="material-symbols-outlined">play_circle</span> Assistir Vídeo</button>`;
                         } else if (anexo.link) {
                             anexoHtml += `<a href="${anexo.link.url}" target="_blank" class="btn-anexo" style="margin-right: 10px; display: inline-block;">🔗 Abrir Link</a>`;
                         }
@@ -293,7 +299,11 @@ function fecharInfoTurma() { document.getElementById('modal-info-turma').style.d
 function abrirFerramentaTranscricao(titulo) {
     document.getElementById('material-titulo').innerText = titulo || 'Transcrição Manual';
     
-    // MOSTRA a caixa de upload manual
+    // Esconde o vídeo do youtube e mostra apenas o Upload e Transcrição
+    document.getElementById('video-container').style.display = 'none';
+    document.getElementById('video-iframe').src = '';
+    
+    document.getElementById('caixa-transcricao').style.display = 'block';
     document.getElementById('upload-wrapper').style.display = 'block';
     
     document.getElementById('badge-idioma').innerText = "";
@@ -340,9 +350,14 @@ async function processarUploadArquivo() {
    TRANSCRIÇÃO AUTOMÁTICA (DO CLASSROOM)
    ========================================= */
 async function baixarETranscreverDoDrive(fileId, fileName) {
-    // Esconde a caixa de upload manual para não confundir o aluno (pois o envio será automático)
-    document.getElementById('upload-wrapper').style.display = 'none';
     document.getElementById('material-titulo').innerText = 'Transcrevendo: ' + fileName;
+    
+    // Esconde YouTube e Upload Manual, mostra apenas a caixa de Transcrição
+    document.getElementById('video-container').style.display = 'none';
+    document.getElementById('video-iframe').src = '';
+    document.getElementById('upload-wrapper').style.display = 'none';
+    document.getElementById('caixa-transcricao').style.display = 'block';
+    
     document.getElementById('badge-idioma').innerText = "";
     document.getElementById('btn-traduzir').style.display = 'none';
     
@@ -352,7 +367,6 @@ async function baixarETranscreverDoDrive(fileId, fileName) {
     navegarPara('secao-material');
 
     try {
-        // Usa o token do aluno para baixar o arquivo original do professor
         const token = sessionStorage.getItem('google_token');
         const driveResposta = await fetch(`https://www.googleapis.com/drive/v3/files/${fileId}?alt=media`, {
             headers: { 'Authorization': `Bearer ${token}` }
@@ -360,11 +374,10 @@ async function baixarETranscreverDoDrive(fileId, fileName) {
 
         if (!driveResposta.ok) throw new Error("Acesso negado. Você pode precisar fazer login novamente para dar permissão de leitura.");
         
-        const blob = await driveResposta.blob(); // Pega o áudio bruto
+        const blob = await driveResposta.blob(); 
         
         caixaTexto.innerHTML = `<p><strong>Passo 2/2:</strong> Arquivo capturado! Enviando para a Inteligência Artificial processar... 🧠⏳</p>`;
         
-        // Simula um formulário e joga no seu backend idêntico a um upload manual
         const formData = new FormData();
         formData.append('audio', blob, fileName);
 
@@ -384,11 +397,28 @@ async function baixarETranscreverDoDrive(fileId, fileName) {
     } catch (erro) {
         console.error(erro);
         caixaTexto.innerHTML = `<p style='color: red;'>Erro: ${erro.message}</p>`;
-        // Como adicionamos o escopo do Drive agora, forçamos o aluno a relogar se der erro
         if(erro.message.includes("Acesso negado")) {
              setTimeout(fazerLogout, 3000);
         }
     }
+}
+
+/* =========================================
+   PLAYER DO YOUTUBE (Sem transcrição)
+   ========================================= */
+function abrirPlayerYoutube(videoId, videoTitle) {
+    document.getElementById('material-titulo').innerText = videoTitle || 'Vídeo do YouTube';
+    
+    // Esconde as caixas de upload e de transcrição
+    document.getElementById('upload-wrapper').style.display = 'none';
+    document.getElementById('caixa-transcricao').style.display = 'none';
+    
+    // Mostra e configura o Container de Vídeo
+    document.getElementById('video-container').style.display = 'block';
+    document.getElementById('video-iframe').src = `https://www.youtube.com/embed/${videoId}`;
+    document.getElementById('btn-ver-yt').href = `https://www.youtube.com/watch?v=${videoId}`;
+    
+    navegarPara('secao-material');
 }
 
 
