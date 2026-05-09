@@ -187,6 +187,14 @@ body.theme-high-contrast .card-atividade h4 { color: var(--text-main) !important
 body.theme-high-contrast .status-badge.pendente,
 body.theme-high-contrast .status-badge.entregue { background-color: #000; color: var(--text-main); border: 1px solid var(--border-color); }
 
+/* Correção de Posicionamento do VLibras */
+div[vw] {
+    left: auto !important; right: 20px !important;
+    top: 50% !important; transform: translateY(-50%) !important;
+    display: block !important; position: fixed !important;
+    z-index: 999999 !important;
+}
+
 .sr-only {
     position: absolute;
     width: 1px;
