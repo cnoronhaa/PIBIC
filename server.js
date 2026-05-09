@@ -1,53 +1,56 @@
 import express from 'express';
 import cors from 'cors';
-import youtubedl from 'youtube-dl-exec';
-import ytdl from '@distube/ytdl-core';
+import multer from 'multer';
 import fs from 'fs';
-import os from 'os'; // Acha o sistema operacional
-import path from 'path'; // Monta os caminhos de pasta
+import path from 'path';
+import { fileURLToPath } from 'url';
 import { AssemblyAI } from 'assemblyai';
 
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+
 const app = express();
+const upload = multer({ dest: 'uploads/' }); // Pasta temporária de upload
 
 const client = new AssemblyAI({
-  apiKey: '5bd2731374fd4cc48a5e2705283d183f' // chave AssemblyAI
+  apiKey: '5bd2731374fd4cc48a5e2705283d183f' // Sua chave
 });
 
 app.use(cors());
 app.use(express.json());
-app.use(express.static('public'));
+app.use(express.static(path.join(__dirname, 'public')));
 
-app.get('/api/transcricao/:id', async (req, res) => {
-  const videoId = req.params.id;
-  const videoUrl = `https://www.youtube.com/watch?v=${videoId}`;
+// Rota de Upload e Transcrição
+app.post('/api/transcrever', upload.single('audio'), async (req, res) => {
+  if (!req.file) {
+    return res.status(400).json({ erro: "Nenhum arquivo enviado." });
+  }
+
+  const filePath = req.file.path;
 
   try {
-    console.log(`▶️ Tentando obter stream de áudio para: ${videoId}`);
-
-    // Pegamos as informações do vídeo e o link direto do áudio
-    const info = await ytdl.getInfo(videoUrl);
-    const audioUrl = ytdl.chooseFormat(info.formats, { filter: 'audioonly', quality: 'highestaudio' }).url;
-
-    console.log("✅ Link de áudio extraído. Enviando para AssemblyAI...");
+    console.log("▶️ Arquivo recebido. Iniciando processamento na AssemblyAI...");
 
     const transcript = await client.transcripts.transcribe({
-      audio: audioUrl, // Enviamos o link direto do arquivo de áudio, não a página do YouTube
+      audio: filePath,
       language_detection: true,
       speech_models: ['universal-3-pro']
     });
+
+    // Remove o arquivo do servidor imediatamente para poupar espaço
+    fs.unlinkSync(filePath);
 
     if (transcript.status === 'error') throw new Error(transcript.error);
 
     res.json({ texto: transcript.text, idioma: transcript.language_code });
 
   } catch (error) {
-    console.error("❌ Erro técnico:", error.message);
-    
-    // Se ainda assim der erro, vamos avisar que é uma limitação do YouTube
-    res.status(500).json({ 
-      erro: "O YouTube bloqueou o acesso temporariamente. Tente outro vídeo ou tente mais tarde." 
-    });
+    // Tenta apagar o arquivo caso dê algum erro no meio do caminho
+    if (fs.existsSync(filePath)) fs.unlinkSync(filePath);
+    console.error("❌ Erro:", error.message);
+    res.status(500).json({ erro: "Erro ao processar o áudio. Tente novamente." });
   }
 });
 
-app.listen(3000, () => console.log("Servidor ON"));
+const PORT = process.env.PORT || 3000;
+app.listen(PORT, () => console.log(`Servidor rodando na porta ${PORT}`));
