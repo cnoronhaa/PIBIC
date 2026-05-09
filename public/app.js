@@ -1,11 +1,13 @@
 // CONFIGURAÇÕES
 const CLIENT_ID = '1056484806122-rhmdjfl6njumsj6sjb6fo5rh4ba1jvgt.apps.googleusercontent.com';
+// ADICIONAMOS A PERMISSÃO DO DRIVE AQUI NO FINAL DOS SCOPES:
 const SCOPES = 'https://www.googleapis.com/auth/classroom.courses.readonly ' + 
                'https://www.googleapis.com/auth/classroom.announcements.readonly ' + 
                'https://www.googleapis.com/auth/classroom.coursework.me.readonly ' +
                'https://www.googleapis.com/auth/classroom.rosters.readonly ' +
                'https://www.googleapis.com/auth/userinfo.profile ' + 
-               'https://www.googleapis.com/auth/userinfo.email';
+               'https://www.googleapis.com/auth/userinfo.email ' +
+               'https://www.googleapis.com/auth/drive.readonly'; 
 
 let tokenClient;
 let gapiInited = false;
@@ -50,31 +52,23 @@ window.onload = () => {
 };
 
 /* NAVEGAÇÃO */
-function toggleSidebar() {
-    document.getElementById('sidebar').classList.toggle('collapsed');
-}
+function toggleSidebar() { document.getElementById('sidebar').classList.toggle('collapsed'); }
 
 function navegarPara(idSecao, event) {
     if(event) event.preventDefault(); 
-
     document.querySelectorAll('.content-section').forEach(sec => sec.style.display = 'none');
     document.getElementById(idSecao).style.display = 'block';
     
     document.querySelectorAll('.nav-links a').forEach(a => a.classList.remove('active'));
-    if(event && event.currentTarget) {
-        event.currentTarget.classList.add('active');
-    }
+    if(event && event.currentTarget) event.currentTarget.classList.add('active');
 }
 
 /* LOGOUT */
 function fazerLogout() {
     const token = gapi.client.getToken();
     sessionStorage.removeItem('google_token');
-
     if (token !== null) {
-        google.accounts.oauth2.revoke(token.access_token, () => {
-            window.location.reload();
-        });
+        google.accounts.oauth2.revoke(token.access_token, () => { window.location.reload(); });
     } else {
         window.location.reload();
     }
@@ -85,20 +79,15 @@ async function carregarPerfil() {
     try {
         const response = await gapi.client.oauth2.userinfo.get();
         const perfil = response.result;
-        
         document.getElementById('perfil-nome').innerText = perfil.name || 'Usuário';
         document.getElementById('perfil-email').innerText = perfil.email || 'E-mail não disponível';
-        
         if (perfil.picture) {
             const imgEl = document.getElementById('perfil-foto');
             imgEl.src = perfil.picture;
             imgEl.style.display = 'inline-block';
             document.getElementById('perfil-icone-fallback').style.display = 'none';
         }
-    } catch (err) {
-        console.error('Erro ao carregar perfil:', err);
-        document.getElementById('perfil-nome').innerText = 'Erro ao carregar perfil';
-    }
+    } catch (err) { console.error('Erro ao carregar perfil:', err); }
 }
 
 /* API CLASSROOM - TURMAS E MURAL */
@@ -119,7 +108,6 @@ async function carregarTurmas() {
             const card = document.createElement('article');
             card.className = 'card-turma';
             card.onclick = () => abrirMural(curso); 
-            
             const imgId = `img-prof-${curso.id}`;
 
             card.innerHTML = `
@@ -135,28 +123,23 @@ async function carregarTurmas() {
             `;
             container.appendChild(card);
 
-            gapi.client.classroom.courses.teachers.list({ courseId: curso.id })
-                .then(res => {
-                    const professores = res.result.teachers;
-                    if (professores && professores.length > 0) {
-                        const fotoUrl = professores[0].profile.photoUrl;
-                        if (fotoUrl && !fotoUrl.includes('default-user')) {
-                            const imgEl = document.getElementById(imgId);
-                            imgEl.src = fotoUrl.startsWith('//') ? 'https:' + fotoUrl : fotoUrl;
-                            imgEl.style.display = 'block';
-                            document.getElementById(`icon-${imgId}`).style.display = 'none';
-                        }
+            gapi.client.classroom.courses.teachers.list({ courseId: curso.id }).then(res => {
+                const professores = res.result.teachers;
+                if (professores && professores.length > 0) {
+                    const fotoUrl = professores[0].profile.photoUrl;
+                    if (fotoUrl && !fotoUrl.includes('default-user')) {
+                        const imgEl = document.getElementById(imgId);
+                        imgEl.src = fotoUrl.startsWith('//') ? 'https:' + fotoUrl : fotoUrl;
+                        imgEl.style.display = 'block';
+                        document.getElementById(`icon-${imgId}`).style.display = 'none';
                     }
-                })
-                .catch(err => console.log("Sem permissão ou erro ao buscar foto da turma", curso.id));
+                }
+            }).catch(() => {});
         });
     } catch (err) {
-        console.error("Erro ao carregar turmas na API:", err);
         if (err.status === 401 || (err.result && err.result.error && err.result.error.code === 401)) {
             sessionStorage.removeItem('google_token');
             window.location.reload();
-        } else {
-            container.innerHTML = '<p>Erro ao carregar turmas. Tente fazer login novamente.</p>';
         }
     }
 }
@@ -197,27 +180,32 @@ async function abrirMural(curso) {
 
                 const anexos = post.materials || post.assignment?.materials;
                 const temAnexo = anexos && anexos.length > 0;
-                
                 const tipoReal = post.tipoBase === 'Material' ? 'Atividade' : (temAnexo ? 'Material' : 'Comunicado');
                 const classeTag = post.tipoBase === 'Material' ? 'tag-comunicado' : (tipoReal === 'Comunicado' ? 'tag-comunicado' : 'tag-material');
 
                 let anexoHtml = '';
                 if (temAnexo) {
                     anexos.forEach(anexo => {
-                        // Agora todos os botões de anexo direcionam para a ferramenta local (se for vídeo/áudio)
-                        if (anexo.youtubeVideo) {
-                            anexoHtml += `<button class="btn-anexo" style="margin-right: 10px;" onclick="abrirFerramentaTranscricao('${post.title || 'Material da Aula'}')">🎙️ Transcrever Arquivo Local</button>`;
-                        } else if (anexo.driveFile) {
+                        // AQUI IDENTIFICAMOS SE O PROFESSOR SUBIU ÁUDIO OU VÍDEO
+                        if (anexo.driveFile) {
                             const file = anexo.driveFile.driveFile;
-                            anexoHtml += `<a href="${file.alternateLink}" target="_blank" class="btn-anexo" style="margin-right: 10px; display: inline-block;">📄 Abrir ${file.title || 'Arquivo'}</a>`;
+                            const titulo = (file.title || "").toLowerCase();
+                            const ehMidia = titulo.endsWith('.mp3') || titulo.endsWith('.mp4') || titulo.endsWith('.m4a') || titulo.endsWith('.wav') || titulo.endsWith('.ogg');
+                            
+                            if (ehMidia) {
+                                // Mostra o botão destacadão para a IA ler!
+                                anexoHtml += `<button class="btn-anexo" style="margin-right: 10px; background: var(--accent); color: white; border: none; padding: 8px 12px; border-radius: 4px; cursor: pointer;" onclick="baixarETranscreverDoDrive('${file.id}', '${file.title}')">🎙️ Transcrever Aula (${file.title})</button>`;
+                            } else {
+                                anexoHtml += `<a href="${file.alternateLink}" target="_blank" class="btn-anexo" style="margin-right: 10px; display: inline-block;">📄 Abrir Arquivo</a>`;
+                            }
+                        } else if (anexo.youtubeVideo) {
+                            anexoHtml += `<a href="${anexo.youtubeVideo.alternateLink}" target="_blank" class="btn-anexo" style="margin-right: 10px; display: inline-block;">▶️ Abrir YouTube</a>`;
                         } else if (anexo.link) {
                             anexoHtml += `<a href="${anexo.link.url}" target="_blank" class="btn-anexo" style="margin-right: 10px; display: inline-block;">🔗 Abrir Link</a>`;
-                        } else if (anexo.form) {
-                            anexoHtml += `<a href="${anexo.form.formUrl}" target="_blank" class="btn-anexo" style="margin-right: 10px; display: inline-block;">📝 Abrir Formulário</a>`;
                         }
                     });
                 } else if (post.alternateLink && post.tipoBase === 'Material') {
-                    anexoHtml = `<a href="${post.alternateLink}" target="_blank" class="btn-anexo">🔗 Abrir Atividade no Classroom</a>`;
+                    anexoHtml = `<a href="${post.alternateLink}" target="_blank" class="btn-anexo">🔗 Abrir Atividade</a>`;
                 }
 
                 div.innerHTML = `
@@ -244,11 +232,9 @@ async function abrirMural(curso) {
                     const dataObj = new Date(ativ.dueDate.year, ativ.dueDate.month - 1, ativ.dueDate.day);
                     dueDateStr = 'Vence em: ' + dataObj.toLocaleDateString('pt-BR');
                 }
-
                 const divAtiv = document.createElement('div');
                 divAtiv.className = 'card-atividade';
                 divAtiv.onclick = () => window.open(ativ.alternateLink, '_blank'); 
-
                 divAtiv.innerHTML = `
                     <div class="atividade-info">
                         <div class="icone-atividade" style="background: var(--accent); color: white; padding: 10px; border-radius: 50%;">
@@ -259,14 +245,12 @@ async function abrirMural(curso) {
                             <p style="margin: 5px 0 0 0; color: #666; font-size: 0.9rem;">${dueDateStr}</p>
                         </div>
                     </div>
-                    <span class="status-badge pendente">Espaço para Envio Aberto</span>
+                    <span class="status-badge pendente">Espaço Aberto</span>
                 `;
                 listaAtividades.appendChild(divAtiv);
             });
         }
-    } catch (err) {
-        console.error("Erro ao carregar mural:", err);
-    }
+    } catch (err) { console.error("Erro ao carregar mural:", err); }
 }
 
 function alternarAbaTurma(aba) {
@@ -274,7 +258,6 @@ function alternarAbaTurma(aba) {
     document.getElementById('btn-aba-atividades').classList.remove('active');
     document.getElementById('aba-mural').style.display = 'none';
     document.getElementById('aba-atividades').style.display = 'none';
-
     if (aba === 'mural') {
         document.getElementById('btn-aba-mural').classList.add('active');
         document.getElementById('aba-mural').style.display = 'block';
@@ -288,99 +271,130 @@ async function abrirInfoTurma() {
     if(!cursoAtualGlobal) return;
     const modal = document.getElementById('modal-info-turma');
     const conteudo = document.getElementById('info-turma-conteudo');
-    
     conteudo.innerHTML = '<p>Buscando detalhes do professor...</p>';
     modal.style.display = 'block';
-
     try {
         const response = await gapi.client.classroom.courses.teachers.list({ courseId: cursoAtualGlobal.id });
         const professores = response.result.teachers || [];
         const nomesProfessores = professores.map(p => p.profile.name.fullName).join(', ') || 'Não identificado';
-
         conteudo.innerHTML = `
             <div style="margin-bottom: 10px;"><strong>Turma:</strong> ${cursoAtualGlobal.name}</div>
             <div style="margin-bottom: 10px;"><strong>Disciplina/Seção:</strong> ${cursoAtualGlobal.section || 'Geral'}</div>
             <div style="margin-bottom: 10px;"><strong>Professor(es):</strong> ${nomesProfessores}</div>
-            <div style="margin-bottom: 10px;"><strong>Sala:</strong> ${cursoAtualGlobal.room || 'Não informada'}</div>
-            <div style="margin-bottom: 10px; border-top: 1px solid #ccc; padding-top: 10px; margin-top: 15px;">
-                <strong>Descrição da Turma:</strong><br>
-                ${cursoAtualGlobal.descriptionHeading || cursoAtualGlobal.description || 'Nenhuma descrição adicionada.'}
-            </div>
         `;
-    } catch (err) {
-        conteudo.innerHTML = `<p>Você precisa dar a permissão ao Google para ver os dados dos professores.</p>`;
-    }
+    } catch (err) { conteudo.innerHTML = `<p>Sem permissão para ver dados dos professores.</p>`; }
 }
-
 function fecharInfoTurma() { document.getElementById('modal-info-turma').style.display = 'none'; }
 
 
 /* =========================================
-   SISTEMA DE UPLOAD E TRANSCRIÇÃO DE ARQUIVOS
+   TRANSCRIÇÃO MANUAL (BARRA LATERAL)
    ========================================= */
-
-// Função que abre a tela de upload
 function abrirFerramentaTranscricao(titulo) {
-    document.getElementById('material-titulo').innerText = titulo || 'Ferramenta de Transcrição';
+    document.getElementById('material-titulo').innerText = titulo || 'Transcrição Manual';
     
-    const btnTraduzir = document.getElementById('btn-traduzir');
-    const caixaTexto = document.getElementById('transcricao-texto');
-    const badgeIdioma = document.getElementById('badge-idioma');
-    const inputArquivo = document.getElementById('arquivo-upload');
+    // MOSTRA a caixa de upload manual
+    document.getElementById('upload-wrapper').style.display = 'block';
+    
+    document.getElementById('badge-idioma').innerText = "";
+    document.getElementById('btn-traduzir').style.display = 'none'; 
+    document.getElementById('transcricao-texto').innerHTML = "Selecione um arquivo acima e clique em 'Transcrever Arquivo' para iniciar a leitura com IA.";
+    document.getElementById('arquivo-upload').value = ""; 
+    
     const btnEnviar = document.getElementById('btn-enviar-arquivo');
-    
-    badgeIdioma.innerText = "";
-    btnTraduzir.style.display = 'none'; 
-    caixaTexto.innerHTML = "Selecione um arquivo acima e clique em 'Transcrever Arquivo' para iniciar a leitura com IA.";
-    inputArquivo.value = ""; 
-    
     btnEnviar.disabled = false;
     btnEnviar.onclick = () => processarUploadArquivo();
     
     navegarPara('secao-material');
 }
 
-// Faz o upload real do arquivo para o servidor via form-data
 async function processarUploadArquivo() {
     const inputArquivo = document.getElementById('arquivo-upload');
     const caixaTexto = document.getElementById('transcricao-texto');
     const btnEnviar = document.getElementById('btn-enviar-arquivo');
     const arquivo = inputArquivo.files[0];
 
-    if (!arquivo) {
-        alert("Por favor, selecione um arquivo de áudio ou vídeo no seu computador primeiro.");
-        return;
-    }
+    if (!arquivo) return alert("Por favor, selecione um arquivo.");
 
     const formData = new FormData();
     formData.append('audio', arquivo);
 
-    // Aviso acessível para leitores de tela devido ao aria-live no HTML
-    caixaTexto.innerHTML = `<p><strong>Enviando e processando:</strong> ${arquivo.name}.<br>Isso pode levar alguns instantes. Por favor, aguarde... ⏳</p>`;
+    caixaTexto.innerHTML = `<p><strong>Enviando e processando:</strong> ${arquivo.name} ⏳</p>`;
     btnEnviar.disabled = true;
-    btnEnviar.innerHTML = `<span class="material-symbols-outlined" aria-hidden="true">hourglass_empty</span> Processando...`;
 
     try {
-        const resposta = await fetch('/api/transcrever', {
-            method: 'POST',
-            body: formData
-        });
+        const resposta = await fetch('/api/transcrever', { method: 'POST', body: formData });
         const dados = await resposta.json();
         
-        if (resposta.ok && !dados.erro) {
-            exibirTranscricao(dados.texto, dados.idioma);
-        } else {
-            caixaTexto.innerHTML = `<p style="color: red;">Erro: ${dados.erro}</p>`;
-        }
+        if (resposta.ok && !dados.erro) exibirTranscricao(dados.texto, dados.idioma);
+        else caixaTexto.innerHTML = `<p style="color: red;">Erro: ${dados.erro}</p>`;
     } catch (erro) {
-        console.error("Erro na requisição:", erro);
-        caixaTexto.innerHTML = "<p style='color: red;'>Erro de conexão com o servidor. O arquivo pode ser muito grande ou a rede falhou.</p>";
+        caixaTexto.innerHTML = "<p style='color: red;'>Erro de conexão.</p>";
     } finally {
         btnEnviar.disabled = false;
-        btnEnviar.innerHTML = `<span class="material-symbols-outlined" aria-hidden="true">upload</span> Transcrever Arquivo`;
     }
 }
 
+
+/* =========================================
+   TRANSCRIÇÃO AUTOMÁTICA (DO CLASSROOM)
+   ========================================= */
+async function baixarETranscreverDoDrive(fileId, fileName) {
+    // Esconde a caixa de upload manual para não confundir o aluno (pois o envio será automático)
+    document.getElementById('upload-wrapper').style.display = 'none';
+    document.getElementById('material-titulo').innerText = 'Transcrevendo: ' + fileName;
+    document.getElementById('badge-idioma').innerText = "";
+    document.getElementById('btn-traduzir').style.display = 'none';
+    
+    const caixaTexto = document.getElementById('transcricao-texto');
+    caixaTexto.innerHTML = `<p><strong>Passo 1/2:</strong> Buscando arquivo do professor no Google Drive... ⏳</p>`;
+    
+    navegarPara('secao-material');
+
+    try {
+        // Usa o token do aluno para baixar o arquivo original do professor
+        const token = sessionStorage.getItem('google_token');
+        const driveResposta = await fetch(`https://www.googleapis.com/drive/v3/files/${fileId}?alt=media`, {
+            headers: { 'Authorization': `Bearer ${token}` }
+        });
+
+        if (!driveResposta.ok) throw new Error("Acesso negado. Você pode precisar fazer login novamente para dar permissão de leitura.");
+        
+        const blob = await driveResposta.blob(); // Pega o áudio bruto
+        
+        caixaTexto.innerHTML = `<p><strong>Passo 2/2:</strong> Arquivo capturado! Enviando para a Inteligência Artificial processar... 🧠⏳</p>`;
+        
+        // Simula um formulário e joga no seu backend idêntico a um upload manual
+        const formData = new FormData();
+        formData.append('audio', blob, fileName);
+
+        const servidorResposta = await fetch('/api/transcrever', {
+            method: 'POST',
+            body: formData
+        });
+        
+        const dados = await servidorResposta.json();
+        
+        if (servidorResposta.ok && !dados.erro) {
+            exibirTranscricao(dados.texto, dados.idioma);
+        } else {
+            caixaTexto.innerHTML = `<p style="color: red;">Erro na IA: ${dados.erro}</p>`;
+        }
+
+    } catch (erro) {
+        console.error(erro);
+        caixaTexto.innerHTML = `<p style='color: red;'>Erro: ${erro.message}</p>`;
+        // Como adicionamos o escopo do Drive agora, forçamos o aluno a relogar se der erro
+        if(erro.message.includes("Acesso negado")) {
+             setTimeout(fazerLogout, 3000);
+        }
+    }
+}
+
+
+/* =========================================
+   EXIBIÇÃO E TRADUÇÃO
+   ========================================= */
 function exibirTranscricao(texto, idioma) {
     const caixaTexto = document.getElementById('transcricao-texto');
     const btnTraduzir = document.getElementById('btn-traduzir');
@@ -401,7 +415,6 @@ function exibirTranscricao(texto, idioma) {
 async function traduzirNoNavegador(textoOriginal) {
     const btnTraduzir = document.getElementById('btn-traduzir');
     const caixaTexto = document.getElementById('transcricao-texto');
-
     btnTraduzir.innerHTML = "⏳ Traduzindo...";
     btnTraduzir.disabled = true;
 
@@ -415,7 +428,7 @@ async function traduzirNoNavegador(textoOriginal) {
 
         caixaTexto.innerHTML = `
             <div style="margin-bottom: 15px;">
-                <strong style="color: #4CAF50; font-size: 1.1rem;">🇧🇷 Tradução (Automática):</strong><br>
+                <strong style="color: #4CAF50; font-size: 1.1rem;">🇧🇷 Tradução:</strong><br>
                 <span style="white-space: pre-wrap; line-height: 1.6;">${textoTraduzido}</span>
             </div>
             <hr style="border: 1px solid var(--border-color); margin: 20px 0;">
@@ -424,14 +437,13 @@ async function traduzirNoNavegador(textoOriginal) {
                 <span style="white-space: pre-wrap; line-height: 1.6; opacity: 0.8;">${textoOriginal}</span>
             </div>
         `;
-        
         btnTraduzir.style.display = 'none'; 
     } catch (erro) {
-        console.error(erro);
         btnTraduzir.innerHTML = "❌ Erro. Tente de novo.";
         btnTraduzir.disabled = false;
     }
 }
+
 
 /* ACESSIBILIDADE */
 function abrirModalAcessibilidade() { document.getElementById('modal-acessibilidade').style.display = 'block'; }
