@@ -58,6 +58,12 @@
                     </a>
                 </li>
                 <li>
+                    <a href="#" onclick="abrirFerramentaTranscricao('Nova Transcrição')">
+                        <span class="material-symbols-outlined" aria-hidden="true">audio_file</span>
+                        <span class="link-text">Transcrever</span>
+                    </a>
+                </li>
+                <li>
                     <a href="#" onclick="navegarPara('secao-notificacoes', event)">
                         <span class="material-symbols-outlined" aria-hidden="true">notifications</span>
                         <span class="link-text">Notificações</span>
@@ -87,8 +93,8 @@
         <main class="main-content" role="main">
             <header class="top-bar">
                 <div id="acoes-topbar" style="width: 100%; display: flex; justify-content: flex-end; gap: 10px;">
-                    <button class="btn-voltar" onclick="abrirMaterialVideo('Vídeo de Teste (Curto)', 'jNQXAC9IVRw')" style="border-color: var(--accent); color: var(--accent);" aria-label="Testar Vídeo Curto">
-                        Testar Vídeo Curto
+                    <button class="btn-voltar" onclick="abrirFerramentaTranscricao('Transcrição Local')" style="border-color: var(--accent); color: var(--accent); background: transparent; display: flex; align-items: center; gap: 5px;" aria-label="Abrir ferramenta de transcrição">
+                        <span class="material-symbols-outlined" aria-hidden="true">upload_file</span> Nova Transcrição
                     </button>
                 </div>
             </header>
@@ -179,34 +185,41 @@
 
             <section id="secao-material" class="content-section" style="display: none;" aria-labelledby="material-titulo">
                 <div class="mural-header">
-                    <button onclick="navegarPara('secao-mural', event)" class="btn-voltar" aria-label="Voltar para o mural da turma">
+                    <button onclick="navegarPara('secao-mural', event)" class="btn-voltar" aria-label="Voltar à tela anterior">
                         <span aria-hidden="true">←</span> Voltar
                     </button>
-                    <h1 id="material-titulo">Título do Material</h1>
+                    <h1 id="material-titulo">Ferramenta de Transcrição</h1>
                 </div>
 
                 <div class="material-container">
-                    <div id="video-wrapper" class="video-wrapper" style="display: none;" role="region" aria-label="Vídeo">
-                        <iframe id="youtube-player" width="100%" height="100%" frameborder="0" allowfullscreen title="Reprodutor de vídeo do YouTube"></iframe>
+                    
+                    <div id="upload-wrapper" class="upload-wrapper" role="region" aria-label="Área de envio de arquivo" style="background: var(--card-bg); padding: 25px; border-radius: 8px; border: 1px solid var(--border-color); margin-bottom: 20px;">
+                        <h2 style="margin-top: 0; font-size: 1.2rem; display: flex; align-items: center; gap: 8px;">
+                            <span class="material-symbols-outlined" aria-hidden="true">audio_file</span> Enviar Arquivo Local
+                        </h2>
+                        <p>Selecione o arquivo da aula salvo no seu computador para gerar a transcrição adaptada.</p>
+                        
+                        <label for="arquivo-upload" class="sr-only">Escolher arquivo de áudio ou vídeo</label>
+                        <input type="file" id="arquivo-upload" accept="audio/*,video/*" aria-describedby="upload-hint" style="display: block; width: 100%; margin: 15px 0; padding: 10px; border: 1px dashed var(--border-color); border-radius: 4px; background: var(--bg-main); color: var(--text-main);">
+                        
+                        <p id="upload-hint" style="font-size: 0.9rem; color: #666; margin-bottom: 15px;">Formatos suportados: .mp3, .mp4, .wav, .m4a</p>
+                        
+                        <button id="btn-enviar-arquivo" class="btn-danger" style="background: var(--accent); padding: 10px 20px; font-size: 1rem; border: none; border-radius: 4px; cursor: pointer; color: white; display: flex; align-items: center; gap: 8px;">
+                            <span class="material-symbols-outlined" aria-hidden="true">upload</span> Transcrever Arquivo
+                        </button>
                     </div>
 
                    <div class="transcricao-box">
                         <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--border-color); padding-bottom: 10px; margin-bottom: 15px;">
-                            <h3 style="margin: 0; border: none; padding: 0;">Transcrição <span id="badge-idioma" style="font-size: 0.9rem; opacity: 0.7; font-weight: normal;"></span></h3>
+                            <h3 style="margin: 0; border: none; padding: 0;">Resultado <span id="badge-idioma" style="font-size: 0.9rem; opacity: 0.7; font-weight: normal;"></span></h3>
                             
-                            <div style="display: flex; gap: 10px;">
-                                <button id="btn-traduzir" class="btn-danger" style="background: #2196F3; padding: 8px 15px; font-size: 1rem; border-color: transparent; display: none;">
-                                    <span class="material-symbols-outlined" style="font-size: 1.2rem; margin-right: 5px; vertical-align: middle;" aria-hidden="true">translate</span> Traduzir para Português
-                                </button>
-                                
-                                <button id="btn-gerar-transcricao" class="btn-danger" style="background: var(--accent); padding: 8px 15px; font-size: 1rem; border-color: transparent; display: none;">
-                                    <span class="material-symbols-outlined" style="font-size: 1.2rem; margin-right: 5px; vertical-align: middle;" aria-hidden="true">text_snippet</span> Gerar Transcrição
-                                </button>
-                            </div>
+                            <button id="btn-traduzir" class="btn-danger" style="background: #2196F3; padding: 8px 15px; font-size: 1rem; border-color: transparent; display: none;">
+                                <span class="material-symbols-outlined" style="font-size: 1.2rem; margin-right: 5px; vertical-align: middle;" aria-hidden="true">translate</span> Traduzir para Português
+                            </button>
                         </div>
                         
-                        <div class="transcricao-content" id="transcricao-texto" aria-live="polite" role="region" aria-label="Texto da transcrição">
-                            Aguardando vídeo ser selecionado...
+                        <div class="transcricao-content" id="transcricao-texto" aria-live="polite" role="region" aria-label="Texto transcrito">
+                            Selecione um arquivo acima e clique em "Transcrever" para iniciar.
                         </div>
                     </div>
                 </div>
