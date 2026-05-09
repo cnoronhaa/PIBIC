@@ -186,14 +186,3 @@ body.theme-high-contrast .card-atividade p,
 body.theme-high-contrast .card-atividade h4 { color: var(--text-main) !important; }
 body.theme-high-contrast .status-badge.pendente,
 body.theme-high-contrast .status-badge.entregue { background-color: #000; color: var(--text-main); border: 1px solid var(--border-color); }
-
-.sr-only {
-    position: absolute;
-    width: 1px;
-    height: 1px;
-    padding: 0;
-    margin: -1px;
-    overflow: hidden;
-    clip: rect(0, 0, 0, 0);
-    border: 0;
-}
