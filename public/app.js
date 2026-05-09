@@ -7,7 +7,9 @@ const SCOPES = 'https://www.googleapis.com/auth/classroom.courses.readonly ' +
                'https://www.googleapis.com/auth/userinfo.profile ' + 
                'https://www.googleapis.com/auth/userinfo.email ' +
                'https://www.googleapis.com/auth/drive.readonly'; 
+const TAMANHO_MAXIMO_MB = 50; // Limite de 50 Megabytes
 
+let historicoTranscricoes = []; // Guarda as transcrições da sessão atual
 let tokenClient;
 let gapiInited = false;
 let cursoAtualGlobal = null;
@@ -334,7 +336,15 @@ async function processarUploadArquivo() {
 
     if (!arquivo) return alert("Por favor, selecione um arquivo.");
 
-    // NOVO: Mágica do Vídeo! Verifica se é vídeo e exibe no player
+    // NOVO: Verificação de tamanho limite do arquivo
+    const tamanhoEmMB = arquivo.size / (1024 * 1024);
+    if (tamanhoEmMB > TAMANHO_MAXIMO_MB) {
+        alert(`Erro: O arquivo tem ${tamanhoEmMB.toFixed(1)}MB. O limite máximo do sistema é ${TAMANHO_MAXIMO_MB}MB.`);
+        // Limpa o input pra pessoa não tentar mandar de novo por engano
+        inputArquivo.value = ""; 
+        return;
+    }
+
     const videoPreview = document.getElementById('video-local-preview');
     if (arquivo.type.startsWith('video/')) {
         const urlDoVideo = URL.createObjectURL(arquivo);
@@ -355,8 +365,13 @@ async function processarUploadArquivo() {
         const resposta = await fetch('/api/transcrever', { method: 'POST', body: formData });
         const dados = await resposta.json();
         
-        if (resposta.ok && !dados.erro) exibirTranscricao(dados.texto, dados.idioma);
-        else caixaTexto.innerHTML = `<p style="color: red;">Erro: ${dados.erro}</p>`;
+        if (resposta.ok && !dados.erro) {
+            exibirTranscricao(dados.texto, dados.idioma);
+            // NOVO: Salva no histórico!
+            salvarNoHistorico(arquivo.name, dados.texto, dados.idioma);
+        } else {
+            caixaTexto.innerHTML = `<p style="color: red;">Erro: ${dados.erro}</p>`;
+        }
     } catch (erro) {
         caixaTexto.innerHTML = "<p style='color: red;'>Erro de conexão.</p>";
     } finally {
@@ -421,6 +436,7 @@ async function baixarETranscreverDoDrive(fileId, fileName) {
         
         if (servidorResposta.ok && !dados.erro) {
             exibirTranscricao(dados.texto, dados.idioma);
+            salvarNoHistorico(fileName, dados.texto, dados.idioma);
         } else {
             caixaTexto.innerHTML = `<p style="color: red;">Erro na IA: ${dados.erro}</p>`;
         }
@@ -504,6 +520,55 @@ async function traduzirNoNavegador(textoOriginal) {
         btnTraduzir.innerHTML = "❌ Erro. Tente de novo.";
         btnTraduzir.disabled = false;
     }
+}
+
+/* =========================================
+   SISTEMA DE HISTÓRICO (Economia de Tokens)
+   ========================================= */
+function salvarNoHistorico(nome, texto, idioma) {
+    // Verifica se já existe pra não duplicar no visual
+    const jaExiste = historicoTranscricoes.find(item => item.nome === nome);
+    if (!jaExiste) {
+        historicoTranscricoes.push({ nome, texto, idioma });
+        atualizarUIHistorico();
+    }
+}
+
+function atualizarUIHistorico() {
+    const container = document.getElementById('historico-container');
+    const lista = document.getElementById('lista-historico');
+    
+    if (historicoTranscricoes.length === 0) {
+        container.style.display = 'none';
+        return;
+    }
+
+    // Mostra o container se tiver algo no histórico
+    container.style.display = 'block';
+    lista.innerHTML = '';
+
+    // Cria um botãozinho pra cada transcrição salva
+    historicoTranscricoes.forEach((item) => {
+        const btn = document.createElement('button');
+        btn.className = 'btn-anexo'; // Usa a sua mesma classe bonitinha
+        btn.style.cssText = 'text-align: left; background: var(--bg-main); color: var(--text-main); border: 1px solid var(--border-color); width: 100%; display: flex; justify-content: space-between; align-items: center; cursor: pointer; padding: 12px;';
+        
+        btn.innerHTML = `
+            <span>📄 <strong>${item.nome}</strong></span>
+            <span class="material-symbols-outlined" style="font-size: 1.2rem; color: var(--accent);">restore</span>
+        `;
+        
+        btn.onclick = () => {
+            // Se ele clicar, a gente recupera sem acionar API!
+            document.getElementById('video-local-preview').style.display = 'none'; 
+            document.getElementById('caixa-transcricao').style.display = 'block';
+            exibirTranscricao(item.texto, item.idioma);
+            document.getElementById('material-titulo').innerText = 'Recuperado: ' + item.nome;
+            window.scrollTo({ top: document.getElementById('caixa-transcricao').offsetTop, behavior: 'smooth' });
+        };
+        
+        lista.appendChild(btn);
+    });
 }
 
 
