@@ -297,6 +297,7 @@ function fecharInfoTurma() { document.getElementById('modal-info-turma').style.d
    TRANSCRIÇÃO MANUAL (BARRA LATERAL)
    ========================================= */
 function abrirFerramentaTranscricao(titulo) {
+    document.getElementById('btn-voltar-material').style.display = 'none';
     document.getElementById('material-titulo').innerText = titulo || 'Transcrição Manual';
     
     // Esconde o vídeo do youtube e mostra apenas o Upload e Transcrição
@@ -350,6 +351,7 @@ async function processarUploadArquivo() {
    TRANSCRIÇÃO AUTOMÁTICA (DO CLASSROOM)
    ========================================= */
 async function baixarETranscreverDoDrive(fileId, fileName) {
+    document.getElementById('btn-voltar-material').style.display = 'inline-block';
     document.getElementById('material-titulo').innerText = 'Transcrevendo: ' + fileName;
     
     // Esconde YouTube e Upload Manual, mostra apenas a caixa de Transcrição
@@ -407,6 +409,7 @@ async function baixarETranscreverDoDrive(fileId, fileName) {
    PLAYER DO YOUTUBE (Sem transcrição)
    ========================================= */
 function abrirPlayerYoutube(videoId, videoTitle) {
+    document.getElementById('btn-voltar-material').style.display = 'inline-block';
     document.getElementById('material-titulo').innerText = videoTitle || 'Vídeo do YouTube';
     
     // Esconde as caixas de upload e de transcrição
