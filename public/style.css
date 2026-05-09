@@ -162,22 +162,12 @@ input:checked + .slider:before { transform: translateX(20px); }
 
 
 body.theme-high-contrast .card-turma p { color: var(--text-main); }
-
-
 body.theme-high-contrast .btn-google { background-color: #000000; color: var(--text-main); border: 2px solid var(--border-color); }
-
-
 body.theme-high-contrast .slogan,
 body.theme-high-contrast .termos { color: var(--text-main); opacity: 1; }
-
-
 body.theme-high-contrast .link-saiba-mais { color: var(--text-main); }
-
-
 body.theme-high-contrast .btn-group button { background: #000000; color: var(--text-main); border: 2px solid var(--border-color); }
 body.theme-high-contrast .btn-group button:hover { background: var(--text-main); color: #000000; }
-
-
 body.theme-high-contrast .tab-btn { color: var(--text-main); opacity: 1; }
 body.theme-high-contrast .tab-btn.active { color: var(--text-main); border-bottom-color: var(--text-main); }
 body.theme-high-contrast .tab-btn:hover { background-color: var(--text-main); color: #000; }
@@ -206,12 +196,11 @@ div[vw] {
     right: 10px !important;
     left: auto !important;
     top: 50% !important;
-    /* Usamos margin-top no lugar do transform para não quebrar o motor 3D do boneco */
     margin-top: -150px !important; 
-    z-index: 2147483647 !important; /* Fica na frente de todas as camadas do site */
+    transform: none !important; /* <--- ISSO AQUI MATA O BUG */
+    z-index: 2147483647 !important;
 }
 
-/* Força o quadro 3D do boneco a nunca ser esmagado pelo layout */
 div[vw] canvas {
     max-width: 100% !important;
     height: auto !important;
